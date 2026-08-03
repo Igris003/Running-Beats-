@@ -1,0 +1,2102 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Running Beats - Modern 3D Highway Runner</title>
+  <style>
+    :root {
+      --neon-cyan: #00f0ff;
+      --neon-pink: #ff007f;
+      --neon-yellow: #ffe600;
+      --neon-diamond: #b026ff;
+      --accent-blue: #0066ff;
+      --bg-dark: #070a14;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: var(--bg-dark);
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    #game-wrapper {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg-dark);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    /* --- GAMEPLAY HUD HEADER --- */
+    .hud {
+      position: absolute;
+      top: clamp(12px, 3.5vh, 22px);
+      left: 16px;
+      right: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 5;
+      pointer-events: none;
+    }
+
+    .hud-card {
+      font-size: clamp(12px, 3.5vw, 15px);
+      font-weight: 700;
+      color: #ffffff;
+      background: rgba(10, 14, 26, 0.75);
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .diamonds-hud {
+      color: #ffffff;
+      border-color: rgba(176, 38, 255, 0.4);
+    }
+
+    /* --- OVERLAY BASE LAYOUT --- */
+    .overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(7, 10, 20, 0.94);
+      backdrop-filter: blur(12px);
+      z-index: 10;
+      padding: 20px;
+      text-align: center;
+      overflow-y: auto;
+    }
+
+    .overlay-centered {
+      justify-content: center;
+    }
+
+    /* --- MINIMALIST WHITE APP THEME --- */
+    .white-app-overlay {
+      background: #ffffff !important;
+      color: #000000 !important;
+      animation: fadeIn 0.35s ease-out;
+      backdrop-filter: none;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.98); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .white-app-overlay h1 {
+      color: #000000 !important;
+      text-shadow: none !important;
+      font-weight: 900;
+      font-size: clamp(22px, 5.5vw, 30px);
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+      animation: none !important;
+    }
+
+    .white-app-overlay h1::after {
+      display: none !important;
+    }
+
+    .divider-line {
+      width: 100%;
+      max-width: 320px;
+      height: 1px;
+      background: #e0e0e0;
+      margin-bottom: 16px;
+    }
+
+    /* --- MATCH HISTORY PAGE STYLING --- */
+    .history-filter-row {
+      display: flex;
+      gap: 6px;
+      width: 100%;
+      max-width: 330px;
+      margin-bottom: 14px;
+      background: #f1f3f5;
+      padding: 4px;
+      border-radius: 30px;
+    }
+
+    .filter-btn {
+      flex: 1;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #555555;
+      background: transparent;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+    }
+
+    .filter-btn.active {
+      background: #ffffff;
+      color: #000000;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .history-app-list {
+      width: 100%;
+      max-width: 330px;
+      max-height: 52vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-right: 2px;
+    }
+
+    .history-card-app {
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      border-radius: 16px;
+      padding: 14px 16px;
+      text-align: left;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      color: #000000;
+    }
+
+    .history-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 800;
+      color: #000000;
+    }
+
+    .history-card-date {
+      font-size: 11px;
+      color: #6c757d;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .history-card-body {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      border-top: 1px solid #edf2f7;
+      padding-top: 8px;
+      margin-top: 2px;
+    }
+
+    .status-badge-app {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .status-success-app { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .status-fail-app { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    .status-pending-app { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+
+    /* Support Card */
+    .support-card-app {
+      background: #f8f9fa;
+      border: 1px solid #e0e0e0;
+      border-radius: 16px;
+      padding: 16px;
+      width: 100%;
+      max-width: 320px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+      margin-bottom: 16px;
+      text-align: left;
+      color: #000;
+    }
+
+    .support-note-app {
+      font-size: 11px;
+      color: #555555;
+      background: #ffffff;
+      border-left: 3px solid #000000;
+      padding: 8px 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+      line-height: 1.4;
+      border: 1px solid #eee;
+      border-left-width: 3px;
+    }
+
+    .auth-form-minimal {
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .input-box-minimal {
+      position: relative;
+      width: 100%;
+      display: flex;
+      align-items: center;
+    }
+
+    .input-icon-minimal {
+      position: absolute;
+      left: 16px;
+      font-size: 16px;
+      pointer-events: none;
+      color: #444444;
+      z-index: 2;
+    }
+
+    .input-minimal {
+      width: 100%;
+      padding: 13px 18px 13px 44px;
+      background: #ffffff;
+      border: 1px solid #000000;
+      border-radius: 30px;
+      color: #000000;
+      font-size: 14px;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .input-minimal::placeholder {
+      color: #888888;
+    }
+
+    .input-minimal:focus {
+      border-width: 2px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+    }
+
+    .attachment-row {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .btn-outline-att {
+      flex: 1;
+      padding: 11px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      color: #000000;
+      background: #ffffff;
+      border: 1.5px solid #000000;
+      border-radius: 30px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn-outline-att:hover {
+      background: #f0f0f0;
+    }
+
+    .btn-outline-att.recording {
+      background: #ff3366;
+      color: #ffffff;
+      border-color: #ff3366;
+      animation: pulseRecord 1s infinite alternate;
+    }
+
+    @keyframes pulseRecord {
+      0% { opacity: 0.8; }
+      100% { opacity: 1; }
+    }
+
+    .attachment-preview-text {
+      font-size: 11px;
+      color: #28a745;
+      font-weight: 700;
+      text-align: left;
+      margin-top: -4px;
+      display: none;
+    }
+
+    /* App Buttons */
+    .btn-app-primary {
+      width: 100%;
+      padding: 14px 20px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #ffffff;
+      background: #000000;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-app-primary:hover {
+      background: #222222;
+      transform: scale(1.02);
+    }
+
+    .btn-app-secondary {
+      width: 100%;
+      padding: 14px 20px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #000000;
+      background: #ffffff;
+      border: 1.5px solid #000000;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-app-secondary:hover {
+      background: #f0f0f0;
+    }
+
+    .btn-app-tertiary {
+      width: 100%;
+      padding: 14px 20px;
+      font-size: 14px;
+      font-weight: 700;
+      color: #222222;
+      background: #e9ecef;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .btn-app-tertiary:hover {
+      background: #dee2e6;
+    }
+
+    .btn-minimal-danger {
+      background: #ff3366;
+      border-color: #ff3366;
+      color: #fff;
+    }
+
+    .auth-toggle-minimal {
+      margin-top: 16px;
+      font-size: 13px;
+      color: #000000;
+      cursor: pointer;
+      text-decoration: underline;
+      font-weight: 600;
+    }
+
+    /* --- CYBERPUNK MAIN DASHBOARD --- */
+    h1 {
+      position: relative;
+      font-size: clamp(26px, 7vw, 40px);
+      font-weight: 900;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 15px var(--neon-cyan), 0 0 30px var(--neon-pink);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      animation: pulseTitle 3s ease-in-out infinite alternate;
+      margin: 5px 0;
+    }
+
+    h1::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 140%;
+      height: 140%;
+      background: radial-gradient(circle, rgba(0, 240, 255, 0.15) 0%, rgba(255, 0, 127, 0.08) 50%, transparent 80%);
+      border-radius: 50%;
+      z-index: -1;
+      pointer-events: none;
+      animation: pulseWave 2.5s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulseTitle {
+      0% { text-shadow: 0 0 12px var(--neon-cyan), 0 0 20px var(--neon-pink); }
+      100% { text-shadow: 0 0 22px var(--neon-cyan), 0 0 40px var(--neon-pink); }
+    }
+
+    @keyframes pulseWave {
+      0% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.5; }
+      100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.9; }
+    }
+
+    .dashboard-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      max-width: 1200px;
+      position: relative;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    .title-center {
+      flex: 1;
+      text-align: center;
+    }
+
+    .top-right-profile-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      border-radius: 30px;
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .top-right-profile-box:hover {
+      background: rgba(0, 240, 255, 0.12);
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 22px rgba(0, 240, 255, 0.4);
+    }
+
+    .mini-profile-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+
+    .micro-stats-row {
+      display: flex;
+      gap: 6px;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .micro-tag {
+      background: rgba(0, 0, 0, 0.6);
+      padding: 2px 6px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .micro-coins { border: 1px solid rgba(255, 230, 0, 0.5); color: var(--neon-yellow); }
+    .micro-diamonds { border: 1px solid rgba(176, 38, 255, 0.5); color: var(--neon-diamond); }
+
+    .main-body-layout {
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      width: 100%;
+      flex-grow: 1;
+      margin: 10px 0;
+    }
+
+    .left-vertical-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 270px;
+    }
+
+    .btn {
+      padding: 13px 20px;
+      font-size: 13px;
+      font-weight: 800;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(0, 240, 255, 0.4);
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.22s ease-out;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding-left: 22px;
+      gap: 10px;
+    }
+
+    .btn:hover {
+      transform: translateX(8px);
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 15px var(--neon-cyan);
+      background: rgba(0, 240, 255, 0.18);
+    }
+
+    .btn-profile-top {
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.3);
+    }
+
+    .btn-play-game {
+      background: linear-gradient(135deg, var(--neon-pink), #7928ca);
+      border: none;
+      box-shadow: 0 0 22px rgba(255, 0, 127, 0.7);
+      font-size: 15px;
+      padding: 15px 22px;
+    }
+
+    .btn-play-game:hover {
+      transform: scale(1.04) translateX(4px);
+      box-shadow: 0 0 30px var(--neon-pink);
+      filter: brightness(1.2);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--neon-cyan), #0072ff);
+      box-shadow: 0 0 18px rgba(0, 240, 255, 0.5);
+      border: none;
+      justify-content: center;
+      padding-left: 0;
+    }
+
+    .btn-yellow {
+      background: linear-gradient(135deg, #ffcc00, #ff8800);
+      box-shadow: 0 0 18px rgba(255, 204, 0, 0.6);
+      color: #000;
+      border: none;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    /* --- GAME OVER SCREEN --- */
+    .gameover-overlay {
+      background: radial-gradient(circle at center, #11172a 0%, #060812 100%) !important;
+      animation: screenFadeIn 0.4s ease-out;
+    }
+
+    @keyframes screenFadeIn {
+      from { opacity: 0; transform: scale(0.97); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .gameover-title {
+      font-size: clamp(32px, 8vw, 44px) !important;
+      font-weight: 900;
+      color: #ffffff !important;
+      text-shadow: 0 0 25px rgba(255, 51, 102, 0.6), 0 0 50px rgba(176, 38, 255, 0.3) !important;
+      letter-spacing: 3px;
+      margin-bottom: 18px;
+      animation: none !important;
+    }
+
+    .gameover-title::after {
+      display: none !important;
+    }
+
+    .gameover-stats-card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 16px 24px;
+      width: 100%;
+      max-width: 300px;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .gameover-stat-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .gameover-btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      width: 100%;
+      max-width: 300px;
+    }
+
+    .btn-gameover-primary {
+      width: 100%;
+      padding: 15px;
+      font-size: 15px;
+      font-weight: 800;
+      color: #ffffff;
+      background: linear-gradient(135deg, #0066ff, #7928ca);
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(0, 102, 255, 0.4);
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-gameover-primary:hover {
+      transform: scale(1.03);
+      box-shadow: 0 8px 25px rgba(0, 102, 255, 0.6);
+      filter: brightness(1.15);
+    }
+
+    .btn-gameover-secondary {
+      width: 100%;
+      padding: 14px;
+      font-size: 14px;
+      font-weight: 800;
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1.5px solid rgba(255, 255, 255, 0.6);
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .btn-gameover-secondary:hover {
+      background: #ffffff;
+      color: #000000;
+      transform: scale(1.02);
+    }
+
+    .error-msg {
+      color: #ff3366;
+      font-size: 12px;
+      display: none;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 650px) {
+      .top-bar {
+        flex-direction: column-reverse;
+        align-items: center;
+        gap: 10px;
+      }
+      .main-body-layout {
+        justify-content: center;
+      }
+      .left-vertical-menu {
+        max-width: 290px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+  <!-- HUD SCREEN -->
+  <div class="hud hidden" id="gameHud">
+    <div class="hud-card" id="scoreDisplay">🧮 SCORE: 00000</div>
+    <div class="hud-card diamonds-hud" id="diamondsDisplay">💎 DIAMONDS: 0</div>
+  </div>
+
+  <canvas id="gameCanvas"></canvas>
+
+  <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
+
+  <!-- 1. MINIMALIST WHITE SIGN UP SCREEN -->
+  <div class="overlay overlay-centered white-app-overlay" id="signupScreen">
+    <h1>CREATE ACCOUNT</h1>
+    <div class="auth-form-minimal">
+      <div class="input-box-minimal">
+        <span class="input-icon-minimal">👤</span>
+        <input type="text" class="input-minimal" id="regName" placeholder="Full Name">
+      </div>
+      <div class="input-box-minimal">
+        <span class="input-icon-minimal">📱</span>
+        <input type="tel" class="input-minimal" id="regMobile" placeholder="Mobile Number">
+      </div>
+      <div class="input-box-minimal">
+        <span class="input-icon-minimal">🔒</span>
+        <input type="password" class="input-minimal" id="regPass" placeholder="Password">
+      </div>
+      <div class="error-msg" id="regError"></div>
+      <button class="btn-app-primary" id="createAccountBtn">CREATE ACCOUNT</button>
+    </div>
+    <div class="auth-toggle-minimal" id="goToLogin">Already have an account? Login</div>
+  </div>
+
+  <!-- 2. MINIMALIST WHITE LOGIN SCREEN -->
+  <div class="overlay overlay-centered white-app-overlay hidden" id="loginScreen">
+    <h1>LOGIN</h1>
+    <div class="auth-form-minimal">
+      <div class="input-box-minimal">
+        <span class="input-icon-minimal">📱</span>
+        <input type="tel" class="input-minimal" id="loginMobile" placeholder="Mobile Number">
+      </div>
+      <div class="input-box-minimal">
+        <span class="input-icon-minimal">🔒</span>
+        <input type="password" class="input-minimal" id="loginPass" placeholder="Password">
+      </div>
+      <div class="error-msg" id="loginError"></div>
+      <button class="btn-app-primary" id="loginBtn">LOGIN</button>
+    </div>
+    <div class="auth-toggle-minimal" id="goToSignup">Don’t have an account? Register</div>
+  </div>
+
+  <!-- 3. MAIN DASHBOARD -->
+  <div class="overlay hidden" id="mainMenuScreen">
+    <div class="dashboard-container">
+      
+      <!-- TOP BAR -->
+      <div class="top-bar">
+        <div style="width: 140px;" class="desktop-only"></div>
+        <div class="title-center">
+          <h1>RUNNING BEATS</h1>
+        </div>
+
+        <div class="top-right-profile-box" id="openProfilePanelCornerBtn" title="Click to View Profile">
+          <div class="mini-profile-name" id="userName">Try</div>
+          <div class="micro-stats-row">
+            <div class="micro-tag micro-coins">💰 <span id="userTotalCoins">0</span></div>
+            <div class="micro-tag micro-diamonds">💎 <span id="userTotalDiamonds">0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MIDDLE LAYOUT: LEFT SIDE VERTICAL MENU -->
+      <div class="main-body-layout">
+        <div class="left-vertical-menu">
+          <button class="btn btn-profile-top" id="viewProfileOptionBtn">👤 VIEW PROFILE</button>
+          <button class="btn btn-play-game" id="playGameBtn">🎮 PLAY GAME</button>
+          <button class="btn" id="practiceModeBtn">⚙️ PRACTICE MODE</button>
+          <button class="btn" id="playFriendsBtn">👥 PLAY WITH FRIENDS</button>
+          <button class="btn" id="playOnlineBtn">🌐 PLAY ONLINE</button>
+          <button class="btn btn-yellow" id="openWalletBtn">🏦 WALLET & WITHDRAW</button>
+          <button class="btn" id="viewHistoryBtn">📜 MATCH HISTORY</button>
+          <button class="btn" id="openSupportBtn" style="border-color: var(--neon-cyan);">🎧 HELP & SUPPORT</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 4. PROFILE PANEL MODAL -->
+  <div class="overlay overlay-centered white-app-overlay hidden" id="profilePanelModal">
+    <h1>PROFILE SECTION</h1>
+    <div style="border: 1px solid #e0e0e0; background:#fff; border-radius: 16px; padding: 18px; width: 100%; max-width: 310px; margin-bottom: 16px; text-align: left; box-shadow:0 4px 12px rgba(0,0,0,0.06);">
+      <div style="font-size: 18px; font-weight: 900; color: #000;" id="modalName">Try</div>
+      <div style="font-size: 13px; color: #666; margin-top: 2px;" id="modalMobile">+91 XXXXXXXXXX</div>
+      <div style="font-size: 12px; font-weight: 800; color: #000; margin-top: 6px;" id="modalUserId">ID: #RB1001</div>
+      
+      <div style="border-top: 1px solid #eee; margin-top: 12px; padding-top: 10px; display: flex; gap: 12px; font-size: 13px; font-weight: bold;">
+        <div>💰 Coins: <span id="modalCoins" style="color: #000;">0</span></div>
+        <div>💎 Diamonds: <span id="modalDiamonds" style="color: #b026ff;">0</span></div>
+      </div>
+    </div>
+
+    <div class="auth-form-minimal" style="max-width:310px;">
+      <button class="btn-app-secondary" id="editFromPanelBtn">EDIT PROFILE DETAILS</button>
+      <button class="btn-app-primary btn-minimal-danger" id="logoutFromPanelBtn">LOGOUT</button>
+      <button class="btn-app-tertiary" id="closeProfilePanelBtn">CLOSE</button>
+    </div>
+  </div>
+
+  <!-- 5. WALLET PAGE -->
+  <div class="overlay overlay-centered white-app-overlay hidden" id="walletScreen">
+    <h1>WALLET & WITHDRAW</h1>
+    <div class="divider-line"></div>
+
+    <div class="support-card-app">
+      <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:14px; font-weight:bold;">
+        <span>💰 Total Coins:</span>
+        <span id="walletCoins">0</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; padding:4px 0; font-size:14px; font-weight:bold;">
+        <span>💎 Diamonds Earned:</span>
+        <span id="walletDiamonds" style="color:#b026ff;">0</span>
+      </div>
+      <div style="font-size:11px; color:#666; margin-top:8px; padding-top:6px; border-top:1px dashed #ddd;">
+        Minimum withdrawal: <b>500 Coins</b> (UPI Payout)
+      </div>
+    </div>
+
+    <div class="auth-form-minimal" style="max-width:320px;">
+      <div class="input-box-minimal">
+        <span class="input-icon-minimal">💳</span>
+        <input type="text" class="input-minimal" id="withdrawUpi" placeholder="Enter UPI ID">
+      </div>
+      <div class="input-box-minimal">
+        <span class="input-icon-minimal">💰</span>
+        <input type="number" class="input-minimal" id="withdrawAmount" placeholder="Coins to Withdraw">
+      </div>
+      <div class="error-msg" id="walletError"></div>
+
+      <button class="btn-app-primary" id="submitWithdrawBtn">SUBMIT WITHDRAWAL REQUEST</button>
+      <button class="btn-app-secondary" id="rechargeCoinsBtn">RECHARGE COINS (WHATSAPP)</button>
+      <button class="btn-app-tertiary" id="closeWalletBtn">BACK TO MENU</button>
+    </div>
+  </div>
+
+  <!-- 6. HELP & SUPPORT SCREEN -->
+  <div class="overlay overlay-centered white-app-overlay hidden" id="supportScreen">
+    <h1>HELP & SUPPORT</h1>
+    <div class="divider-line"></div>
+
+    <div class="support-card-app" id="ticketStatusCard">
+      <div style="font-size: 13px; font-weight: bold; color: #000; margin-bottom: 6px;">Recent Ticket Status:</div>
+      <div id="ticketDetailView">
+        <div style="font-size: 12px; color: #777;">No tickets submitted yet.</div>
+      </div>
+      <div class="support-note-app">
+        <b>Admin Response:</b> Our admin team will respond within 24–48 hours.
+      </div>
+    </div>
+
+    <div class="auth-form-minimal" style="max-width:320px;">
+      <textarea class="input-minimal" id="issueDescription" placeholder="Describe your issue or problem here..." style="height:85px; border-radius:16px; resize:none; padding:12px 16px;"></textarea>
+      
+      <div class="attachment-row">
+        <button class="btn-outline-att" id="uploadImageBtn">📷 Upload Image</button>
+        <button class="btn-outline-att" id="recordNoteBtn">🎤 Record a Note</button>
+      </div>
+      
+      <div class="attachment-preview-text" id="attachedStatusText">✓ Media attached successfully</div>
+
+      <div class="error-msg" id="supportError"></div>
+
+      <button class="btn-app-primary" id="submitTicketBtn">SUBMIT TICKET</button>
+      <button class="btn-app-secondary" id="viewAdminResponseBtn">VIEW ADMIN RESPONSE</button>
+      <button class="btn-app-tertiary" id="closeSupportBtn">BACK TO HOME</button>
+    </div>
+  </div>
+
+  <!-- ADMIN RESPONSE MODAL -->
+  <div class="overlay overlay-centered white-app-overlay hidden" id="adminResponseModal">
+    <h1>ADMIN RESPONSE</h1>
+    <div class="divider-line"></div>
+    <div class="support-card-app" style="max-width:320px;">
+      <div style="font-size: 13px; font-weight: bold; color: #000; margin-bottom: 6px;" id="respTicketTitle">Ticket #RB0000</div>
+      <div style="font-size: 12px; color: #333; margin-bottom: 8px;" id="respUserIssue"><b>Your Issue:</b> ...</div>
+      <div style="background: #ffffff; padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 12px; line-height: 1.4;" id="respAdminText">
+        <b>Admin Resolution:</b> Our support team is currently reviewing your account details.
+      </div>
+    </div>
+    <button class="btn-app-tertiary" id="closeAdminRespBtn" style="max-width:320px;">BACK TO SUPPORT</button>
+  </div>
+
+  <!-- SETTINGS MODAL -->
+  <div class="overlay overlay-centered white-app-overlay hidden" id="settingsScreen">
+    <h1>PROFILE SETTINGS</h1>
+    <div class="auth-form-minimal" style="max-width:310px;">
+      <div class="input-box-minimal">
+        <span class="input-icon-minimal">👤</span>
+        <input type="text" class="input-minimal" id="editName" placeholder="Update Full Name">
+      </div>
+      <div class="input-box-minimal">
+        <span class="input-icon-minimal">🔒</span>
+        <input type="password" class="input-minimal" id="editPass" placeholder="Update Password">
+      </div>
+      <div class="error-msg" id="settingsError"></div>
+      <button class="btn-app-primary" id="saveProfileBtn">SAVE CHANGES</button>
+      <button class="btn-app-primary btn-minimal-danger" id="logoutBtn">LOGOUT</button>
+      <button class="btn-app-tertiary" id="closeSettingsBtn">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- 7. REDESIGNED CLEAN WHITE MATCH HISTORY SCREEN -->
+  <div class="overlay overlay-centered white-app-overlay hidden" id="historyScreen">
+    <h1>MATCH HISTORY</h1>
+    <div class="divider-line"></div>
+
+    <!-- Filter Toggle Tabs -->
+    <div class="history-filter-row">
+      <button class="filter-btn active" id="filterAllBtn">ALL</button>
+      <button class="filter-btn" id="filterMatchesBtn">🎮 MATCHES</button>
+      <button class="filter-btn" id="filterWithdrawalsBtn">💰 WITHDRAWALS</button>
+    </div>
+
+    <!-- History Cards Scroll Container -->
+    <div class="history-app-list" id="historyContainer"></div>
+
+    <!-- Bottom Primary Action Button -->
+    <button class="btn-app-primary" id="closeHistoryBtn" style="max-width: 330px;">BACK TO HOME</button>
+  </div>
+
+  <!-- 8. GAME OVER SCREEN -->
+  <div class="overlay overlay-centered gameover-overlay hidden" id="gameOverScreen">
+    <h1 class="gameover-title">GAME OVER</h1>
+    
+    <div class="gameover-stats-card">
+      <div class="gameover-stat-line">
+        <span>🧮 Score:</span>
+        <span id="finalScoreText">0</span>
+      </div>
+      <div class="gameover-stat-line" style="border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
+        <span>💎 Diamonds Collected:</span>
+        <span id="finalDiamondsText" style="color:var(--neon-diamond);">0</span>
+      </div>
+    </div>
+
+    <div class="gameover-btn-group">
+      <button class="btn-gameover-primary" id="againPlayBtn">PLAY AGAIN</button>
+      <button class="btn-gameover-secondary" id="backToHomeBtn">BACK TO HOME</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- AUTH & SYSTEM CONTROLLER ---
+const signupScreen = document.getElementById('signupScreen');
+const loginScreen = document.getElementById('loginScreen');
+const mainMenuScreen = document.getElementById('mainMenuScreen');
+const profilePanelModal = document.getElementById('profilePanelModal');
+const walletScreen = document.getElementById('walletScreen');
+const settingsScreen = document.getElementById('settingsScreen');
+const supportScreen = document.getElementById('supportScreen');
+const adminResponseModal = document.getElementById('adminResponseModal');
+const historyScreen = document.getElementById('historyScreen');
+const gameOverScreen = document.getElementById('gameOverScreen');
+const gameHud = document.getElementById('gameHud');
+
+const regName = document.getElementById('regName');
+const regMobile = document.getElementById('regMobile');
+const regPass = document.getElementById('regPass');
+const regError = document.getElementById('regError');
+
+const loginMobile = document.getElementById('loginMobile');
+const loginPass = document.getElementById('loginPass');
+const loginError = document.getElementById('loginError');
+
+const editName = document.getElementById('editName');
+const editPass = document.getElementById('editPass');
+const settingsError = document.getElementById('settingsError');
+
+const withdrawUpi = document.getElementById('withdrawUpi');
+const withdrawAmount = document.getElementById('withdrawAmount');
+const walletError = document.getElementById('walletError');
+
+const issueDescription = document.getElementById('issueDescription');
+const supportError = document.getElementById('supportError');
+const ticketDetailView = document.getElementById('ticketDetailView');
+const uploadImageBtn = document.getElementById('uploadImageBtn');
+const recordNoteBtn = document.getElementById('recordNoteBtn');
+const imageFileInput = document.getElementById('imageFileInput');
+const attachedStatusText = document.getElementById('attachedStatusText');
+
+const userName = document.getElementById('userName');
+const userTotalCoins = document.getElementById('userTotalCoins');
+const userTotalDiamonds = document.getElementById('userTotalDiamonds');
+
+const modalName = document.getElementById('modalName');
+const modalMobile = document.getElementById('modalMobile');
+const modalUserId = document.getElementById('modalUserId');
+const modalCoins = document.getElementById('modalCoins');
+const modalDiamonds = document.getElementById('modalDiamonds');
+
+const walletCoins = document.getElementById('walletCoins');
+const walletDiamonds = document.getElementById('walletDiamonds');
+
+const createAccountBtn = document.getElementById('createAccountBtn');
+const loginBtn = document.getElementById('loginBtn');
+const viewProfileOptionBtn = document.getElementById('viewProfileOptionBtn');
+const playGameBtn = document.getElementById('playGameBtn');
+const practiceModeBtn = document.getElementById('practiceModeBtn');
+const playFriendsBtn = document.getElementById('playFriendsBtn');
+const playOnlineBtn = document.getElementById('playOnlineBtn');
+
+const openWalletBtn = document.getElementById('openWalletBtn');
+const rechargeCoinsBtn = document.getElementById('rechargeCoinsBtn');
+const submitWithdrawBtn = document.getElementById('submitWithdrawBtn');
+const closeWalletBtn = document.getElementById('closeWalletBtn');
+
+const openSupportBtn = document.getElementById('openSupportBtn');
+const submitTicketBtn = document.getElementById('submitTicketBtn');
+const viewAdminResponseBtn = document.getElementById('viewAdminResponseBtn');
+const closeSupportBtn = document.getElementById('closeSupportBtn');
+const closeAdminRespBtn = document.getElementById('closeAdminRespBtn');
+
+const viewHistoryBtn = document.getElementById('viewHistoryBtn');
+const closeHistoryBtn = document.getElementById('closeHistoryBtn');
+const filterAllBtn = document.getElementById('filterAllBtn');
+const filterMatchesBtn = document.getElementById('filterMatchesBtn');
+const filterWithdrawalsBtn = document.getElementById('filterWithdrawalsBtn');
+
+const againPlayBtn = document.getElementById('againPlayBtn');
+const backToHomeBtn = document.getElementById('backToHomeBtn');
+
+const openProfilePanelCornerBtn = document.getElementById('openProfilePanelCornerBtn');
+const closeProfilePanelBtn = document.getElementById('closeProfilePanelBtn');
+const editFromPanelBtn = document.getElementById('editFromPanelBtn');
+const logoutFromPanelBtn = document.getElementById('logoutFromPanelBtn');
+
+const saveProfileBtn = document.getElementById('saveProfileBtn');
+const logoutBtn = document.getElementById('logoutBtn');
+const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+
+const goToLogin = document.getElementById('goToLogin');
+const goToSignup = document.getElementById('goToSignup');
+
+let currentUser = JSON.parse(localStorage.getItem('rb_registered_user')) || null;
+let matchHistory = JSON.parse(localStorage.getItem('rb_match_history')) || [];
+let withdrawalRequests = JSON.parse(localStorage.getItem('rb_withdrawals')) || [];
+let userTickets = JSON.parse(localStorage.getItem('rb_tickets')) || [];
+let totalCoins = parseInt(localStorage.getItem('rb_total_coins')) || 0;
+let totalDiamonds = parseInt(localStorage.getItem('rb_total_diamonds')) || 0;
+
+let activeFilter = 'all';
+let hasAttachedImage = false;
+let isRecordingAudio = false;
+
+function checkAuthState() {
+  if (currentUser) {
+    if (!currentUser.userId) {
+      currentUser.userId = 'RB' + Math.floor(100000 + Math.random() * 900000);
+      localStorage.setItem('rb_registered_user', JSON.stringify(currentUser));
+    }
+    signupScreen.classList.add('hidden');
+    loginScreen.classList.remove('hidden');
+  } else {
+    signupScreen.classList.remove('hidden');
+    loginScreen.classList.add('hidden');
+  }
+}
+checkAuthState();
+
+createAccountBtn.addEventListener('click', () => {
+  const name = regName.value.trim();
+  const mobile = regMobile.value.trim();
+  const pass = regPass.value.trim();
+
+  if (localStorage.getItem('rb_registered_user')) {
+    showError(regError, "Account already exists! Login instead.");
+    return;
+  }
+  if (!name || !mobile || !pass) {
+    showError(regError, "Fill all required fields!");
+    return;
+  }
+
+  const userId = 'RB' + Math.floor(100000 + Math.random() * 900000);
+  const userData = { name, mobile, pass, userId };
+  localStorage.setItem('rb_registered_user', JSON.stringify(userData));
+  currentUser = userData;
+  loadProfileScreen();
+});
+
+loginBtn.addEventListener('click', () => {
+  const mobile = loginMobile.value.trim();
+  const pass = loginPass.value.trim();
+
+  if (!currentUser) {
+    showError(loginError, "Account not found! Register first.");
+    return;
+  }
+  if (mobile === currentUser.mobile && pass === currentUser.pass) {
+    loadProfileScreen();
+  } else {
+    showError(loginError, "Incorrect mobile or password!");
+  }
+});
+
+goToLogin.addEventListener('click', () => {
+  signupScreen.classList.add('hidden');
+  loginScreen.classList.remove('hidden');
+});
+
+goToSignup.addEventListener('click', () => {
+  if (localStorage.getItem('rb_registered_user')) {
+    alert("Account already created. Please login.");
+    return;
+  }
+  loginScreen.classList.add('hidden');
+  signupScreen.classList.remove('hidden');
+});
+
+function showError(elem, msg) {
+  elem.innerText = msg;
+  elem.style.display = 'block';
+}
+
+function getDiamondBalance() {
+  return parseInt(localStorage.getItem('rb_total_diamonds')) || 0;
+}
+
+function loadProfileScreen() {
+  signupScreen.classList.add('hidden');
+  loginScreen.classList.add('hidden');
+  historyScreen.classList.add('hidden');
+  settingsScreen.classList.add('hidden');
+  profilePanelModal.classList.add('hidden');
+  walletScreen.classList.add('hidden');
+  supportScreen.classList.add('hidden');
+  adminResponseModal.classList.add('hidden');
+  gameOverScreen.classList.add('hidden');
+  mainMenuScreen.classList.remove('hidden');
+
+  userName.innerText = currentUser.name || "Try";
+  
+  totalCoins = parseInt(localStorage.getItem('rb_total_coins')) || 0;
+  totalDiamonds = getDiamondBalance();
+
+  userTotalCoins.innerText = totalCoins;
+  userTotalDiamonds.innerText = totalDiamonds;
+}
+
+function openProfilePanelModal() {
+  modalName.innerText = currentUser.name || "Try";
+  modalMobile.innerText = currentUser.mobile || "+91 XXXXXXXXXX";
+  modalUserId.innerText = "ID: #" + (currentUser.userId || "RB1001");
+  modalCoins.innerText = totalCoins;
+  modalDiamonds.innerText = totalDiamonds;
+
+  mainMenuScreen.classList.add('hidden');
+  profilePanelModal.classList.remove('hidden');
+}
+
+openProfilePanelCornerBtn.addEventListener('click', openProfilePanelModal);
+viewProfileOptionBtn.addEventListener('click', openProfilePanelModal);
+
+closeProfilePanelBtn.addEventListener('click', loadProfileScreen);
+editFromPanelBtn.addEventListener('click', () => {
+  profilePanelModal.classList.add('hidden');
+  openSettingsModal();
+});
+logoutFromPanelBtn.addEventListener('click', performLogout);
+
+// MENU BUTTON ACTIONS
+practiceModeBtn.addEventListener('click', () => { alert("Practice Mode Starting... Practice your high score!"); startGame(); });
+playFriendsBtn.addEventListener('click', () => { alert("Play with Friends coming soon in next multiplayer update!"); });
+playOnlineBtn.addEventListener('click', () => { alert("Play Online Lobby Searching... Starting Match!"); startGame(); });
+
+// HELP & SUPPORT LOGIC
+openSupportBtn.addEventListener('click', () => {
+  supportError.style.display = 'none';
+  issueDescription.value = '';
+  hasAttachedImage = false;
+  isRecordingAudio = false;
+  attachedStatusText.style.display = 'none';
+  recordNoteBtn.classList.remove('recording');
+  recordNoteBtn.innerText = '🎤 Record a Note';
+  renderTicketStatus();
+
+  mainMenuScreen.classList.add('hidden');
+  supportScreen.classList.remove('hidden');
+});
+
+uploadImageBtn.addEventListener('click', () => { imageFileInput.click(); });
+
+imageFileInput.addEventListener('change', (e) => {
+  if (e.target.files && e.target.files[0]) {
+    hasAttachedImage = true;
+    attachedStatusText.innerText = "✓ Screenshot Attached (" + e.target.files[0].name.slice(0, 15) + "...)";
+    attachedStatusText.style.display = 'block';
+  }
+});
+
+recordNoteBtn.addEventListener('click', () => {
+  if (!isRecordingAudio) {
+    isRecordingAudio = true;
+    recordNoteBtn.classList.add('recording');
+    recordNoteBtn.innerText = '⏹️ Recording...';
+    attachedStatusText.innerText = "🔴 Recording short voice note...";
+    attachedStatusText.style.display = 'block';
+  } else {
+    isRecordingAudio = false;
+    recordNoteBtn.classList.remove('recording');
+    recordNoteBtn.innerText = '🎤 Record a Note';
+    attachedStatusText.innerText = "✓ Voice Note Recorded (0:08)";
+    attachedStatusText.style.display = 'block';
+  }
+});
+
+function renderTicketStatus() {
+  if (userTickets.length === 0) {
+    ticketDetailView.innerHTML = '<div style="font-size: 12px; color: #777;">No tickets submitted yet.</div>';
+  } else {
+    const lastTicket = userTickets[userTickets.length - 1];
+    let badgeHtml = '<span class="status-badge-app status-pending-app">In Process</span>';
+
+    if (lastTicket.status === 'Solved') {
+      badgeHtml = '<span class="status-badge-app status-success-app">Solved</span>';
+    }
+
+    ticketDetailView.innerHTML = `
+      <div style="display:flex; justify-between; align-items:center; margin-bottom: 4px;">
+        <span style="font-size:12px; font-weight:bold; color:#000;">Ticket ID: ${lastTicket.id}</span>
+        ${badgeHtml}
+      </div>
+      <div style="font-size:12px; color:#333; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+        <b>Issue:</b> ${lastTicket.desc}
+      </div>
+    `;
+  }
+}
+
+submitTicketBtn.addEventListener('click', () => {
+  const desc = issueDescription.value.trim();
+
+  if (!desc) {
+    showError(supportError, "Please describe your issue before submitting!");
+    return;
+  }
+
+  const ticketId = '#RB' + Math.floor(10000 + Math.random() * 90000);
+  const newTicket = {
+    id: ticketId,
+    desc: desc,
+    status: 'In Process',
+    adminReply: 'Our support team is reviewing your ticket details. Response will appear here shortly.',
+    date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date().toLocaleDateString()
+  };
+
+  userTickets.push(newTicket);
+  localStorage.setItem('rb_tickets', JSON.stringify(userTickets));
+
+  issueDescription.value = '';
+  hasAttachedImage = false;
+  attachedStatusText.style.display = 'none';
+  alert(`Your issue has been submitted successfully.\nTicket ID: ${ticketId}`);
+  renderTicketStatus();
+});
+
+viewAdminResponseBtn.addEventListener('click', () => {
+  if (userTickets.length === 0) {
+    alert("You have not submitted any help ticket yet!");
+    return;
+  }
+
+  const lastTicket = userTickets[userTickets.length - 1];
+  document.getElementById('respTicketTitle').innerText = `Ticket ${lastTicket.id} (${lastTicket.status})`;
+  document.getElementById('respUserIssue').innerText = `Your Issue: ${lastTicket.desc}`;
+  document.getElementById('respAdminText').innerHTML = `<b>Admin Resolution:</b> ${lastTicket.adminReply}`;
+
+  supportScreen.classList.add('hidden');
+  adminResponseModal.classList.remove('hidden');
+});
+
+closeAdminRespBtn.addEventListener('click', () => {
+  adminResponseModal.classList.add('hidden');
+  supportScreen.classList.remove('hidden');
+});
+
+closeSupportBtn.addEventListener('click', loadProfileScreen);
+
+// WALLET LOGIC
+openWalletBtn.addEventListener('click', () => {
+  walletError.style.display = 'none';
+  totalCoins = parseInt(localStorage.getItem('rb_total_coins')) || 0;
+  totalDiamonds = getDiamondBalance();
+
+  walletCoins.innerText = totalCoins;
+  walletDiamonds.innerText = totalDiamonds;
+
+  mainMenuScreen.classList.add('hidden');
+  walletScreen.classList.remove('hidden');
+});
+
+rechargeCoinsBtn.addEventListener('click', () => {
+  const targetNumber = '919313186694';
+  const uName = currentUser ? currentUser.name : 'Unknown';
+  const uMobile = currentUser ? currentUser.mobile : 'N/A';
+  const uId = currentUser ? currentUser.userId : 'RB1001';
+
+  const textMessage = `Hello Admin, I want to Recharge Coins in Running Beats Game.%0A%0A📌 *User Details:*%0A👤 *Name:* ${encodeURIComponent(uName)}%0A📱 *Mobile:* ${encodeURIComponent(uMobile)}%0A🆔 *User ID:* ${encodeURIComponent(uId)}%0A%0A*Request:* Please send coin recharge details.`;
+
+  const whatsappUrl = `https://wa.me/${targetNumber}?text=${textMessage}`;
+  window.open(whatsappUrl, '_blank');
+});
+
+submitWithdrawBtn.addEventListener('click', () => {
+  const upi = withdrawUpi.value.trim();
+  const amount = parseInt(withdrawAmount.value.trim());
+
+  if (!upi || isNaN(amount)) {
+    showError(walletError, "Please enter valid UPI ID and coin amount!");
+    return;
+  }
+
+  if (amount < 500) {
+    showError(walletError, "Minimum withdrawal limit is 500 Coins! 💰");
+    return;
+  }
+
+  if (amount > totalCoins) {
+    showError(walletError, "Insufficient Coin Balance!");
+    return;
+  }
+
+  totalCoins -= amount;
+  localStorage.setItem('rb_total_coins', totalCoins);
+
+  const reqRecord = {
+    id: 'TX' + Date.now(),
+    upi: upi,
+    amount: amount,
+    status: 'Pending',
+    reason: '',
+    date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date().toLocaleDateString()
+  };
+
+  withdrawalRequests.push(reqRecord);
+  localStorage.setItem('rb_withdrawals', JSON.stringify(withdrawalRequests));
+
+  withdrawUpi.value = '';
+  withdrawAmount.value = '';
+  alert("Coins Withdrawal request submitted! Status: Pending (24-48 Hours Admin Approval)");
+  walletCoins.innerText = totalCoins;
+});
+
+closeWalletBtn.addEventListener('click', loadProfileScreen);
+
+// SETTINGS & EDIT PROFILE
+function openSettingsModal() {
+  editName.value = currentUser.name;
+  editPass.value = currentUser.pass;
+  settingsError.style.display = 'none';
+
+  mainMenuScreen.classList.add('hidden');
+  settingsScreen.classList.remove('hidden');
+}
+
+saveProfileBtn.addEventListener('click', () => {
+  const newName = editName.value.trim();
+  const newPass = editPass.value.trim();
+
+  if (!newName || !newPass) {
+    showError(settingsError, "Name and Password cannot be empty!");
+    return;
+  }
+
+  currentUser.name = newName;
+  currentUser.pass = newPass;
+  localStorage.setItem('rb_registered_user', JSON.stringify(currentUser));
+
+  alert("Profile updated successfully!");
+  loadProfileScreen();
+});
+
+logoutBtn.addEventListener('click', performLogout);
+
+function performLogout() {
+  if (confirm("Are you sure you want to log out?")) {
+    profilePanelModal.classList.add('hidden');
+    settingsScreen.classList.add('hidden');
+    loginScreen.classList.remove('hidden');
+    loginMobile.value = '';
+    loginPass.value = '';
+  }
+}
+
+closeSettingsBtn.addEventListener('click', loadProfileScreen);
+
+// MATCH HISTORY ENGINE WITH CARDS & FILTERS
+viewHistoryBtn.addEventListener('click', () => {
+  activeFilter = 'all';
+  updateFilterTabsUI();
+  renderHistoryAppCards();
+
+  mainMenuScreen.classList.add('hidden');
+  historyScreen.classList.remove('hidden');
+});
+
+filterAllBtn.addEventListener('click', () => { activeFilter = 'all'; updateFilterTabsUI(); renderHistoryAppCards(); });
+filterMatchesBtn.addEventListener('click', () => { activeFilter = 'matches'; updateFilterTabsUI(); renderHistoryAppCards(); });
+filterWithdrawalsBtn.addEventListener('click', () => { activeFilter = 'withdrawals'; updateFilterTabsUI(); renderHistoryAppCards(); });
+
+function updateFilterTabsUI() {
+  filterAllBtn.classList.toggle('active', activeFilter === 'all');
+  filterMatchesBtn.classList.toggle('active', activeFilter === 'matches');
+  filterWithdrawalsBtn.classList.toggle('active', activeFilter === 'withdrawals');
+}
+
+function renderHistoryAppCards() {
+  const container = document.getElementById('historyContainer');
+  container.innerHTML = '';
+
+  let combinedLogs = [];
+
+  if (activeFilter === 'all' || activeFilter === 'matches') {
+    matchHistory.forEach((match, idx) => {
+      combinedLogs.push({
+        type: 'match',
+        num: idx + 1,
+        score: match.score,
+        diamonds: match.diamonds,
+        date: match.date
+      });
+    });
+  }
+
+  if (activeFilter === 'all' || activeFilter === 'withdrawals') {
+    withdrawalRequests.forEach((tx) => {
+      combinedLogs.push({
+        type: 'withdraw',
+        amount: tx.amount,
+        upi: tx.upi,
+        status: tx.status,
+        date: tx.date
+      });
+    });
+  }
+
+  if (combinedLogs.length === 0) {
+    container.innerHTML = '<div style="color: #888; font-size: 13px; text-align: center; padding: 25px 10px;">No history entries found!</div>';
+    return;
+  }
+
+  combinedLogs.reverse().forEach((log) => {
+    const card = document.createElement('div');
+    card.className = 'history-card-app';
+
+    if (log.type === 'match') {
+      card.innerHTML = `
+        <div class="history-card-header">
+          <span>🎮 Match #${log.num}</span>
+          <span class="history-card-date">🕒 ${log.date}</span>
+        </div>
+        <div class="history-card-body">
+          <div>🧮 Score: <b>${log.score}</b></div>
+          <div>💎 Diamonds Earned: <b>+${log.diamonds}</b></div>
+        </div>
+      `;
+    } else {
+      let statusBadge = '<span class="status-badge-app status-pending-app">Pending</span>';
+      if (log.status === 'Successful' || log.status === 'Approved') {
+        statusBadge = '<span class="status-badge-app status-success-app">Successful</span>';
+      } else if (log.status === 'Failed' || log.status === 'Rejected') {
+        statusBadge = '<span class="status-badge-app status-fail-app">Failed</span>';
+      }
+
+      card.innerHTML = `
+        <div class="history-card-header">
+          <span>💰 Coins Withdrawn: <b>${log.amount}</b></span>
+          ${statusBadge}
+        </div>
+        <div class="history-card-body">
+          <div style="font-size:11px; color:#555;">💳 ${log.upi}</div>
+          <div class="history-card-date">🕒 ${log.date}</div>
+        </div>
+      `;
+    }
+    container.appendChild(card);
+  });
+}
+
+closeHistoryBtn.addEventListener('click', loadProfileScreen);
+
+// --- DYNAMIC 3D GAMEPLAY ENGINE ---
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const wrapper = document.getElementById('game-wrapper');
+
+const scoreDisplay = document.getElementById('scoreDisplay');
+const diamondsDisplay = document.getElementById('diamondsDisplay');
+const finalScoreText = document.getElementById('finalScoreText');
+const finalDiamondsText = document.getElementById('finalDiamondsText');
+
+let audioCtx = null;
+let isPlaying = false;
+let animationFrameId = null;
+
+let score = 0;
+let diamondsCollected = 0;
+let cameraZ = 0;
+let gameSpeed = 0.055;
+let wavePulse = 0;
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+
+function playSound(type) {
+  if (!audioCtx) return;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    const now = audioCtx.currentTime;
+
+    if (type === 'move') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.linearRampToValueAtTime(520, now + 0.07);
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.07);
+      osc.start(now);
+      osc.stop(now + 0.07);
+    } else if (type === 'diamond') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(950, now);
+      osc.frequency.setValueAtTime(1450, now + 0.06);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } else if (type === 'hit') {
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(150, now);
+      osc.frequency.linearRampToValueAtTime(30, now + 0.25);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+      osc.start(now);
+      osc.stop(now + 0.25);
+    }
+  } catch(e) {}
+}
+
+function getRoadPoint(z) {
+  const W = canvas.width;
+  const H = canvas.height;
+
+  const horizonY = H * 0.38;
+  const bottomY = H * 0.98;
+
+  const scale = 1 / Math.max(0.01, z);
+  const pY = horizonY + (bottomY - horizonY) * Math.pow(scale, 1.35);
+  const roadWidth = (W * 0.92) * Math.pow(scale, 1.35);
+
+  return {
+    x: W / 2,
+    y: Math.min(H, pY),
+    width: Math.max(2, roadWidth),
+    scale: scale
+  };
+}
+
+const player = {
+  lane: 1,
+  currentX: 1,
+  y: 0,
+  yVel: 0,
+  isJumping: false,
+  animFrame: 0,
+
+  update() {
+    this.currentX += (this.lane - this.currentX) * 0.25;
+    if (this.isJumping) {
+      this.y += this.yVel;
+      this.yVel -= 0.85;
+      if (this.y <= 0) {
+        this.y = 0;
+        this.isJumping = false;
+      }
+    }
+    this.animFrame += 0.25;
+  },
+
+  draw() {
+    const pGround = getRoadPoint(1.0);
+    const laneWidth = pGround.width / 3;
+    const px = pGround.x + (this.currentX - 1) * laneWidth;
+
+    const runBob = Math.abs(Math.sin(this.animFrame)) * 5;
+    const py = pGround.y - this.y - runBob;
+
+    ctx.save();
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.beginPath();
+    ctx.ellipse(px, pGround.y + 2, 28, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const stride = Math.sin(this.animFrame) * 10;
+
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 9;
+    ctx.lineCap = 'round';
+
+    ctx.beginPath();
+    ctx.moveTo(px - 8, py - 35);
+    ctx.lineTo(px - 12 - stride, py);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(px + 8, py - 35);
+    ctx.lineTo(px + 12 + stride, py);
+    ctx.stroke();
+
+    ctx.fillStyle = 'var(--neon-cyan)';
+    ctx.fillRect(px - 16 - stride, py - 5, 10, 6);
+    ctx.fillRect(px + 6 + stride, py - 5, 10, 6);
+
+    ctx.fillStyle = '#0055ff';
+    ctx.beginPath();
+    ctx.roundRect(px - 16, py - 72, 32, 40, 7);
+    ctx.fill();
+
+    ctx.fillStyle = 'var(--neon-pink)';
+    ctx.fillRect(px - 16, py - 72, 5, 40);
+    ctx.fillRect(px + 11, py - 72, 5, 40);
+
+    ctx.strokeStyle = '#e2a17b';
+    ctx.lineWidth = 6;
+
+    ctx.beginPath();
+    ctx.moveTo(px - 16, py - 65);
+    ctx.lineTo(px - 22 + stride * 0.6, py - 42);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(px + 16, py - 65);
+    ctx.lineTo(px + 22 - stride * 0.6, py - 42);
+    ctx.stroke();
+
+    ctx.fillStyle = '#e2a17b';
+    ctx.fillRect(px - 4, py - 78, 8, 8);
+
+    ctx.beginPath();
+    ctx.arc(px, py - 86, 12, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.arc(px, py - 89, 12, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+};
+
+let worldObjects = [];
+
+class WorldObject {
+  constructor(zPos, type, lane, isTall) {
+    this.z = zPos;
+    this.type = type;
+    this.lane = lane;
+    this.isTall = isTall || false;
+    this.rot = Math.random() * Math.PI * 2;
+  }
+
+  draw() {
+    const relZ = this.z - cameraZ;
+    if (relZ <= 0.15 || relZ > 22) return;
+
+    const p = getRoadPoint(relZ);
+    const laneWidth = p.width / 3;
+    const px = p.x + (this.lane - 1) * laneWidth;
+    const py = p.y;
+
+    const baseSize = Math.max(6, p.width * 0.22);
+
+    ctx.save();
+
+    if (this.type === 'box') {
+      const boxHeight = this.isTall ? baseSize * 1.5 : baseSize * 0.9;
+      const topDepth = baseSize * 0.25;
+
+      ctx.shadowBlur = Math.max(4, baseSize * 0.2);
+      ctx.shadowColor = 'var(--neon-pink)';
+
+      if (this.isTall) {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(px - baseSize / 2, py - boxHeight, baseSize, boxHeight);
+
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.moveTo(px - baseSize / 2, py - boxHeight);
+        ctx.lineTo(px - baseSize / 2 + topDepth, py - boxHeight - topDepth);
+        ctx.lineTo(px + baseSize / 2 + topDepth, py - boxHeight - topDepth);
+        ctx.lineTo(px + baseSize / 2, py - boxHeight);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = 'var(--neon-pink)';
+        ctx.fillRect(px - baseSize * 0.45, py - boxHeight * 0.85, baseSize * 0.2, boxHeight * 0.7);
+        ctx.fillRect(px + baseSize * 0.25, py - boxHeight * 0.85, baseSize * 0.2, boxHeight * 0.7);
+
+        ctx.strokeStyle = 'var(--neon-cyan)';
+        ctx.lineWidth = Math.max(1, baseSize * 0.04);
+        ctx.strokeRect(px - baseSize / 2, py - boxHeight, baseSize, boxHeight);
+      } else {
+        ctx.fillStyle = '#8b4e28';
+        ctx.fillRect(px - baseSize / 2, py - boxHeight, baseSize, boxHeight);
+
+        ctx.fillStyle = '#aa5c2e';
+        ctx.beginPath();
+        ctx.moveTo(px - baseSize / 2, py - boxHeight);
+        ctx.lineTo(px - baseSize / 2 + topDepth, py - boxHeight - topDepth);
+        ctx.lineTo(px + baseSize / 2 + topDepth, py - boxHeight - topDepth);
+        ctx.lineTo(px + baseSize / 2, py - boxHeight);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#3d1d0a';
+        ctx.lineWidth = Math.max(1.5, baseSize * 0.06);
+        ctx.strokeRect(px - baseSize / 2, py - boxHeight, baseSize, boxHeight);
+
+        ctx.beginPath();
+        ctx.moveTo(px - baseSize / 2, py - boxHeight);
+        ctx.lineTo(px + baseSize / 2, py);
+        ctx.moveTo(px + baseSize / 2, py - boxHeight);
+        ctx.lineTo(px - baseSize / 2, py);
+        ctx.stroke();
+      }
+    } else if (this.type === 'diamond') {
+      this.rot += 0.07;
+      const floatY = Math.sin(this.rot * 1.5) * (baseSize * 0.15);
+      const diaY = py - baseSize * 0.65 + floatY;
+      const dSize = baseSize * 0.45;
+
+      ctx.shadowBlur = Math.max(10, baseSize * 0.8);
+      ctx.shadowColor = 'var(--neon-diamond)';
+
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.beginPath();
+      ctx.ellipse(px, py + 2, dSize, dSize * 0.3, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#b026ff';
+      ctx.beginPath();
+      ctx.moveTo(px, diaY - dSize);
+      ctx.lineTo(px + dSize * 0.8, diaY - dSize * 0.2);
+      ctx.lineTo(px, diaY + dSize);
+      ctx.lineTo(px - dSize * 0.8, diaY - dSize * 0.2);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#e599ff';
+      ctx.beginPath();
+      ctx.moveTo(px, diaY - dSize);
+      ctx.lineTo(px + dSize * 0.8, diaY - dSize * 0.2);
+      ctx.lineTo(px, diaY + dSize * 0.2);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1.2, baseSize * 0.04);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+}
+
+let nextSpawnZ = 8;
+function updateWorldMap() {
+  if (cameraZ + 18 > nextSpawnZ) {
+    const lane = Math.floor(Math.random() * 3);
+    const type = Math.random() > 0.35 ? 'box' : 'diamond';
+    const isTall = type === 'box' && Math.random() > 0.5;
+    worldObjects.push(new WorldObject(nextSpawnZ, type, lane, isTall));
+    nextSpawnZ += 3.5 + Math.random() * 2.5;
+  }
+}
+
+function drawPure3DHighway() {
+  const W = canvas.width;
+  const H = canvas.height;
+
+  const horizonY = H * 0.38;
+
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+  skyGrad.addColorStop(0, '#040714');
+  skyGrad.addColorStop(0.7, '#0a1026');
+  skyGrad.addColorStop(1, '#111936');
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, W, horizonY);
+
+  wavePulse += 0.025;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0, 240, 255, 0.12)';
+  ctx.lineWidth = 1.5;
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    for (let x = 0; x <= W; x += 25) {
+      let y = horizonY - 25 - i * 22 + Math.sin(x * 0.012 + wavePulse + i) * 10;
+      if (x === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  ctx.fillStyle = '#050711';
+  ctx.fillRect(0, horizonY, W, H - horizonY);
+
+  const slices = 80;
+  for (let i = slices; i >= 1; i--) {
+    let z1 = i / slices * 20;
+    let z2 = (i - 1) / slices * 20;
+
+    let p1 = getRoadPoint(z1);
+    let p2 = getRoadPoint(z2);
+
+    ctx.fillStyle = (Math.floor((z1 - cameraZ * 1.5) % 2) === 0) ? '#1a202c' : '#151a24';
+    ctx.beginPath();
+    ctx.moveTo(p1.x - p1.width / 2, p1.y);
+    ctx.lineTo(p1.x + p1.width / 2, p1.y);
+    ctx.lineTo(p2.x + p2.width / 2, p2.y);
+    ctx.lineTo(p2.x - p2.width / 2, p2.y);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = 'var(--neon-cyan)';
+    ctx.shadowBlur = 3;
+    ctx.shadowColor = 'var(--neon-cyan)';
+    ctx.beginPath();
+    ctx.moveTo(p1.x - p1.width / 2 - Math.max(1, p1.width * 0.015), p1.y);
+    ctx.lineTo(p1.x - p1.width / 2, p1.y);
+    ctx.lineTo(p2.x - p2.width / 2, p2.y);
+    ctx.lineTo(p2.x - p2.width / 2 - Math.max(1, p1.width * 0.015), p2.y);
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(p1.x + p1.width / 2, p1.y);
+    ctx.lineTo(p1.x + p1.width / 2 + Math.max(1, p1.width * 0.015), p1.y);
+    ctx.lineTo(p2.x + p2.width / 2 + Math.max(1, p2.width * 0.015), p2.y);
+    ctx.lineTo(p2.x + p2.width / 2, p2.y);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+
+  const roadOffset = (cameraZ * 0.8) % 1;
+  ctx.fillStyle = '#ffffff';
+
+  for (let l = 1; l <= 2; l++) {
+    for (let i = 0; i < 12; i++) {
+      let z1 = (i - roadOffset) / 0.6;
+      let z2 = z1 + 0.7;
+      if (z1 <= 0.2 || z1 > 20) continue;
+
+      let p1 = getRoadPoint(z1);
+      let p2 = getRoadPoint(z2);
+
+      let lX1 = p1.x - p1.width / 2 + (l / 3) * p1.width;
+      let lX2 = p2.x - p2.width / 2 + (l / 3) * p2.width;
+
+      const strokeW = Math.max(1, p1.width * 0.012);
+
+      ctx.beginPath();
+      ctx.moveTo(lX1 - strokeW, p1.y);
+      ctx.lineTo(lX1 + strokeW, p1.y);
+      ctx.lineTo(lX2 + strokeW, p2.y);
+      ctx.lineTo(lX2 - strokeW, p2.y);
+      ctx.fill();
+    }
+  }
+}
+
+function checkCollisions() {
+  for (let i = worldObjects.length - 1; i >= 0; i--) {
+    let obj = worldObjects[i];
+    let relZ = obj.z - cameraZ;
+
+    if (relZ <= 1.15 && relZ >= 0.25) {
+      if (obj.lane === player.lane) {
+        if (obj.type === 'box') {
+          if (!obj.isTall && player.y > 18) {
+            continue;
+          }
+          endGame();
+          return;
+        } else if (obj.type === 'diamond') {
+          diamondsCollected++;
+          score += 100;
+          diamondsDisplay.innerText = `💎 DIAMONDS: ${diamondsCollected}`;
+          playSound('diamond');
+          worldObjects.splice(i, 1);
+        }
+      }
+    }
+  }
+}
+
+function gameLoop() {
+  if (!isPlaying) return;
+
+  cameraZ += gameSpeed;
+  gameSpeed += 0.000008;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  drawPure3DHighway();
+  updateWorldMap();
+
+  for (let i = worldObjects.length - 1; i >= 0; i--) {
+    worldObjects[i].draw();
+    if (worldObjects[i].z < cameraZ - 1) {
+      worldObjects.splice(i, 1);
+    }
+  }
+
+  player.update();
+  player.draw();
+
+  checkCollisions();
+
+  score += 0.35;
+  scoreDisplay.innerText = `🧮 SCORE: ${String(Math.floor(score)).padStart(5, '0')}`;
+
+  animationFrameId = requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+  initAudio();
+  resizeCanvas();
+
+  score = 0;
+  diamondsCollected = 0;
+  cameraZ = 0;
+  nextSpawnZ = 8;
+  gameSpeed = 0.055;
+  worldObjects = [];
+
+  player.lane = 1;
+  player.currentX = 1;
+  player.y = 0;
+
+  diamondsDisplay.innerText = `💎 DIAMONDS: 0`;
+
+  mainMenuScreen.classList.add('hidden');
+  gameOverScreen.classList.add('hidden');
+  gameHud.classList.remove('hidden');
+
+  isPlaying = true;
+  gameLoop();
+}
+
+function endGame() {
+  isPlaying = false;
+  playSound('hit');
+  cancelAnimationFrame(animationFrameId);
+
+  let finalScore = Math.floor(score);
+  totalDiamonds += diamondsCollected;
+  localStorage.setItem('rb_total_diamonds', totalDiamonds);
+
+  const matchRecord = {
+    score: finalScore,
+    diamonds: diamondsCollected,
+    date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date().toLocaleDateString()
+  };
+  matchHistory.push(matchRecord);
+  localStorage.setItem('rb_match_history', JSON.stringify(matchHistory));
+
+  finalScoreText.innerText = finalScore;
+  finalDiamondsText.innerText = diamondsCollected;
+  gameHud.classList.add('hidden');
+  gameOverScreen.classList.remove('hidden');
+}
+
+// TOUCH & SWIPE
+let touchStartX = 0;
+let touchStartY = 0;
+
+wrapper.addEventListener('touchstart', (e) => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+});
+
+wrapper.addEventListener('touchend', (e) => {
+  if (!isPlaying) return;
+
+  let diffX = e.changedTouches[0].clientX - touchStartX;
+  let diffY = e.changedTouches[0].clientY - touchStartY;
+
+  if (Math.abs(diffX) > Math.abs(diffY)) {
+    if (diffX > 25 && player.lane < 2) {
+      player.lane++;
+      playSound('move');
+    } else if (diffX < -25 && player.lane > 0) {
+      player.lane--;
+      playSound('move');
+    }
+  } else {
+    if (diffY < -25 && !player.isJumping) {
+      player.isJumping = true;
+      player.yVel = 13;
+      playSound('move');
+    }
+  }
+});
+
+// KEYBOARD
+window.addEventListener('keydown', (e) => {
+  if (!isPlaying) return;
+
+  if ((e.code === 'ArrowLeft' || e.code === 'KeyA') && player.lane > 0) {
+    player.lane--;
+    playSound('move');
+  } else if ((e.code === 'ArrowRight' || e.code === 'KeyD') && player.lane < 2) {
+    player.lane++;
+    playSound('move');
+  } else if ((e.code === 'ArrowUp' || e.code === 'Space') && !player.isJumping) {
+    player.isJumping = true;
+    player.yVel = 13;
+    playSound('move');
+  }
+});
+
+playGameBtn.addEventListener('click', startGame);
+againPlayBtn.addEventListener('click', startGame);
+backToHomeBtn.addEventListener('click', loadProfileScreen);
+</script>
+
+</body>
+</html>
